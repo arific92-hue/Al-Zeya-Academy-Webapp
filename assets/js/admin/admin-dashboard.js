@@ -1,0 +1,10 @@
+async function guardAdmin(){return window.AdminCore.requireAdmin();}
+guardAdmin();
+(async()=>{
+  const pairs=[['courses','courseCount'],['students','studentCount'],['fees','feesDue'],['admission_applications','inboxCount']];
+  for(const [table,id] of pairs){try{if(table==='fees'){const now=new Date();const month=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;const {count,error}=await supabaseClient.from('fees').select('*',{count:'exact',head:true}).eq('month_date',month).in('status',['pending','partial']);if(!error) document.getElementById(id).textContent=count??0; else document.getElementById(id).textContent='—';}else{let q=supabaseClient.from(table).select('*',{count:'exact',head:true}); if(table==='admission_applications') q=q.eq('status','pending'); const {count,error}=await q;if(!error) document.getElementById(id).textContent=count??0; else document.getElementById(id).textContent='—';}}catch(e){document.getElementById(id).textContent='—';}}
+  const activity=document.getElementById('activity');
+  try{const {data,error}=await supabaseClient.from('courses').select('name,duration,fees,created_at').order('created_at',{ascending:false}).limit(5); if(error||!data?.length){activity.innerHTML='<div class="course-row"><div class="course-info"><div class="course-name">No managed courses yet</div><div class="course-meta">Add the first course from Course Management.</div></div></div>';return} activity.innerHTML=data.map(c=>`<div class="course-row"><div class="course-thumb"><span>${(c.name||'C').slice(0,1)}</span></div><div class="course-info"><div class="course-name">${escapeHtml(c.name||'Untitled')}</div><div class="course-meta">${escapeHtml(c.duration||'')} · ₹${escapeHtml(String(c.fees??''))}</div></div></div>`).join('')}catch(e){activity.innerHTML='<div class="course-row"><div class="course-info"><div class="course-name">Dashboard ready</div><div class="course-meta">Counts will populate once the corresponding Supabase tables are configured.</div></div></div>'}
+})();
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+
